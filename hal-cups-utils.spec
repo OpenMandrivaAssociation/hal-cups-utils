@@ -12,6 +12,7 @@ BuildRequires:  libcups-devel
 BuildRequires:  libhal-devel
 Patch1:		hal-cups-utils-0.6.16-svn.patch
 Patch2:		hal-cups-utils-0.6.16-nocupsinclude.patch
+Patch3:		hal-cups-utils-0.6.16-fixlibdir.patch
 
 %description
 This package contains utilities for linking CUPS to HAL. This includes:
@@ -25,6 +26,7 @@ This package contains utilities for linking CUPS to HAL. This includes:
 %setup -q
 %patch1 -p1 -b .svnpatch
 %patch2 -p1 -b .nocupsinclude
+%patch3 -p1 -b .fixlibdir
 
 %build
 ./autogen.sh
