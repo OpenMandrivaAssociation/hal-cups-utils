@@ -1,7 +1,7 @@
 Summary:	A CUPS backend for HAL
 Name:		hal-cups-utils
 Version:	0.6.16
-Release:	%mkrel 3
+Release:	%mkrel 4
 License:	GPLv2+
 Group:		System/Configuration/Printing
 URL:		http://svn.fedorahosted.org/svn/hal-cups-utils/tags/0.6.16/
@@ -13,7 +13,6 @@ BuildRequires:  libhal-devel
 Patch1:		hal-cups-utils-0.6.16-svn.patch
 Patch2:		hal-cups-utils-0.6.16-nocupsinclude.patch
 Patch3:		hal-cups-utils-0.6.16-fixlibdir.patch
-Patch4:		hal-cups-utils-0.6.16-close-hostname-system-crash.patch
 
 %description
 This package contains utilities for linking CUPS to HAL. This includes:
@@ -28,7 +27,6 @@ This package contains utilities for linking CUPS to HAL. This includes:
 %patch1 -p1 -b .svnpatch
 %patch2 -p1 -b .nocupsinclude
 %patch3 -p1 -b .fixlibdir
-%patch4 -p1 -b .close-hostname-system-crash
 
 %build
 ./autogen.sh
