@@ -11,6 +11,7 @@ BuildRoot:	%{_tmppath}/%{name}-%{version}-buildroot
 BuildRequires:	dbus-glib-devel
 BuildRequires:  libcups-devel
 BuildRequires:  libhal-devel
+BuildRequires:  python-devel
 # for hp-makeuri
 Requires:   hplip
 Requires:   hplip-model-data
