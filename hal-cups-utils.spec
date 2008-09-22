@@ -1,7 +1,7 @@
 Summary:	A CUPS backend for HAL
 Name:		hal-cups-utils
 Version:	0.6.16
-Release:	%mkrel 11
+Release:	%mkrel 12
 License:	GPLv2+
 Group:		System/Configuration/Printing
 URL:		http://svn.fedorahosted.org/svn/hal-cups-utils/tags/0.6.16/
@@ -15,6 +15,9 @@ BuildRequires:  libhal-devel
 BuildRequires:  python-devel
 BuildRequires:  libhpip-devel
 Requires:   hplip-model-data
+# nmap is required to scan the network, just like 
+# printerdrake used to do.
+Requires:   nmap
 Patch1:		hal-cups-utils-0.6.16-svn.patch
 Patch2:		hal-cups-utils-0.6.16-nocupsinclude.patch
 Patch3:		hal-cups-utils-0.6.16-fixlibdir.patch
