@@ -1,7 +1,7 @@
 Summary:	A CUPS backend for HAL
 Name:		hal-cups-utils
 Version:	0.6.16
-Release:	%mkrel 13
+Release:	%mkrel 14
 License:	GPLv2+
 Group:		System/Configuration/Printing
 URL:		http://svn.fedorahosted.org/svn/hal-cups-utils/tags/0.6.16/
