@@ -1,13 +1,14 @@
 Summary:	A CUPS backend for HAL
 Name:		hal-cups-utils
 Version:	0.6.16
-Release:	%mkrel 14
+Release:	%mkrel 15
 License:	GPLv2+
 Group:		System/Configuration/Printing
 URL:		http://svn.fedorahosted.org/svn/hal-cups-utils/tags/0.6.16/
 Source:		%{name}-%{version}.tar.bz2
 Source1:	mdv_printer_custom.py
 Source2:    hp-makeuri-mdv.c
+Source3:    mdv_backend
 BuildRoot:	%{_tmppath}/%{name}-%{version}-buildroot
 BuildRequires:	dbus-glib-devel
 BuildRequires:  libcups-devel
@@ -52,7 +53,10 @@ mkdir -p %{buildroot}%{py_platsitedir}
 mkdir -p %{buildroot}%{_bindir}
 cp -f %{SOURCE1} %{buildroot}%{py_platsitedir}
 cp -f hp-makeuri-mdv %{buildroot}%{_bindir}
+
 %makeinstall_std
+
+cp -f %{SOURCE3} %{buildroot}%{_libdir}/cups/backend
 
 pushd %{buildroot}%{py_platsitedir}
 python -m compileall .
@@ -77,6 +81,7 @@ rm -rf %{buildroot}
 %defattr(-,root,root)
 %doc INSTALL README NEWS ChangeLog
 %{_libdir}/cups/backend/hal
+%{_libdir}/cups/backend/mdv_backend
 %{_libdir}/hal_lpadmin
 %{_bindir}/hp-makeuri-mdv
 %{_datadir}/hal/fdi/policy/10osvendor/10-hal_lpadmin.fdi
