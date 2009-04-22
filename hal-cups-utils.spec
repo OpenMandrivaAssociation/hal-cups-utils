@@ -1,7 +1,7 @@
 Summary:	A CUPS backend for HAL
 Name:		hal-cups-utils
 Version:	0.6.16
-Release:	%mkrel 17
+Release:	%mkrel 18
 License:	GPLv2+
 Group:		System/Configuration/Printing
 URL:		http://svn.fedorahosted.org/svn/hal-cups-utils/tags/0.6.16/
@@ -57,6 +57,9 @@ cp -f hp-makeuri-mdv %{buildroot}%{_bindir}
 %makeinstall_std
 
 cp -f %{SOURCE3} %{buildroot}%{_libdir}/cups/backend
+
+# Make cups run this backend as root to workaround device permissions issues (bug #49407)
+chmod 0700 %{buildroot}%{_libdir}/cups/backend/hal
 
 pushd %{buildroot}%{py_platsitedir}
 python -m compileall .
