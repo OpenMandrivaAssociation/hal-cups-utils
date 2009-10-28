@@ -1,11 +1,11 @@
 Summary:	A CUPS backend for HAL
 Name:		hal-cups-utils
 Version:	0.6.16
-Release:	%mkrel 19
+Release:	%mkrel 20
 License:	GPLv2+
 Group:		System/Configuration/Printing
-URL:		http://svn.fedorahosted.org/svn/hal-cups-utils/tags/0.6.16/
-Source:		%{name}-%{version}.tar.bz2
+URL:		https://fedorahosted.org/hal-cups-utils/
+Source:		https://fedorahosted.org/releases/h/a/hal-cups-utils/%{name}-%{version}.tar.bz2
 Source1:	mdv_printer_custom.py
 Source2:    hp-makeuri-mdv.c
 Source3:    mdv_backend
@@ -61,6 +61,8 @@ cp -f %{SOURCE3} %{buildroot}%{_libdir}/cups/backend
 # Make cups run this backend as root to workaround device permissions issues (bug #49407)
 chmod 0700 %{buildroot}%{_libdir}/cups/backend/hal
 
+mkdir -p %{buildroot}%{_libdir}/hal
+mv  %{buildroot}%{_libdir}/hal_lpadmin %{buildroot}%{_libdir}/hal
 pushd %{buildroot}%{py_platsitedir}
 python -m compileall .
 popd
@@ -85,7 +87,7 @@ rm -rf %{buildroot}
 %doc INSTALL README NEWS ChangeLog
 %{_libdir}/cups/backend/hal
 %{_libdir}/cups/backend/mdv_backend
-%{_libdir}/hal_lpadmin
+%{_libdir}/hal/hal_lpadmin
 %{_bindir}/hp-makeuri-mdv
 %{_datadir}/hal/fdi/policy/10osvendor/10-hal_lpadmin.fdi
 %{py_platsitedir}/mdv_printer_custom.py*
