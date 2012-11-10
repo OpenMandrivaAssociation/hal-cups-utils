@@ -1,0 +1,176 @@
+diff -Naur hal-cups-utils-0.6.16/ChangeLog hal-cups-utils-trunk/ChangeLog
+--- hal-cups-utils-0.6.16/ChangeLog	2008-03-25 07:59:57.000000000 -0400
++++ hal-cups-utils-trunk/ChangeLog	2008-07-07 13:41:15.000000000 -0400
+@@ -1,3 +1,36 @@
++2008-07-04  Tim Waugh  <twaugh@redhat.com>
++
++	* systemv/hal_lpadmin (get_location): Removed.
++	(HalPrinter.add): Use os.uname instead.
++	(HalPrinter.configure): Likewise.
++
++2008-07-02  Till Kamppeter  <till.kamppeter@gmail.com>
++
++	* systemv/hal_lpadmin: Adapted to the new "python-cupsheplers" Python
++	library.
++
++2008-05-15  Tim Waugh  <twaugh@redhat.com>
++
++	* systemv/hal_lpadmin (get_location): New function.
++	(HalPrinter.add.wait_child): Use it.
++	(HalPrinter.configure): Likewise.
++
++2008-05-12  Tim Waugh  <twaugh@redhat.com>
++
++	* systemv/hal_lpadmin (get_hplip_uris_for_usb): Explicitly set
++	stdin to be /dev/null to avoid using HAL's file descriptor (bug
++	#442191).
++	(HalPrinter.get_name): Use dash instead of underscore when
++	replacing disallowed characters (bug #445791).
++
++2008-04-04  Tim Waugh  <twaugh@redhat.com>
++
++	* systemv/hal_lpadmin (HalPrinter.add): Don't compare queue names
++	to find out if this device already has a queue configured, just
++	URIs.
++	(HalPrinter.add): Make the name unique.
++	(HalPrinter.add): Deal with fax names as well.
++
+ 2008-03-25  Tim Waugh  <twaugh@redhat.com>
+ 
+ 	* configure.in: Version 0.6.16.
+diff -Naur hal-cups-utils-0.6.16/systemv/hal_lpadmin hal-cups-utils-trunk/systemv/hal_lpadmin
+--- hal-cups-utils-0.6.16/systemv/hal_lpadmin	2008-03-20 18:51:11.000000000 -0400
++++ hal-cups-utils-trunk/systemv/hal_lpadmin	2008-07-07 13:41:14.000000000 -0400
+@@ -1,8 +1,7 @@
+ #!/bin/env python
+ import dbus, sys, os, time, signal, re
+ import traceback
+-sys.path.append("/usr/share/system-config-printer")
+-import cups, cupshelpers, ppds
++import cups, cupshelpers
+ from syslog import *
+ 
+ def get_hplip_uris_for_usb (fax=False, checkuri=None):
+@@ -24,7 +23,7 @@
+         else:
+             type="-c"
+         cmd = \
+-            "LC_ALL=C hp-makeuri -lnone %s %s:%s 2>/dev/null" % \
++            "LC_ALL=C hp-makeuri -lnone %s %s:%s 2>/dev/null </dev/null" % \
+             (type, bus, device)
+         try:
+             uri = os.popen (cmd, 'r').readlines ()[0].strip ()
+@@ -78,9 +77,9 @@
+                               self.properties["usb.port_number"])
+         else:
+             name = self.model
+-        name = name.replace(" ", "_")
+-        name = name.replace("/", "_")
+-        return name.replace("#", "_")
++        name = name.replace(" ", "-")
++        name = name.replace("/", "-")
++        return name.replace("#", "-")
+ 
+     def get_cups_uris(self, removed=False):
+         if self.uris != None:
+@@ -213,8 +212,8 @@
+         p = None
+         for name, printer in printers.iteritems():
+             if printer.is_class: continue
+-            if (name == self.name or
+-                printer.device_uri in uris):
++            if printer.device_uri in uris:
++                printer_exists = 1
+                 syslog (LOG_DEBUG,
+                         "Not adding printer: %s already exists" % name)
+                 printer_exists = 1
+@@ -230,9 +229,7 @@
+                         syslog (LOG_INFO,
+                                 "Printer %s exists but is disabled, reason: %s; "
+                                 "use 'cupsenable %s' to enable it" % (name, statemsg, name))
+-            if (faxuris and
+-                (name == self.faxname or
+-                 printer.device_uri in faxuris)):
++            if faxuris and printer.device_uri in faxuris:
+                 syslog (LOG_DEBUG,
+                         "Not adding fax printer: %s already exists" % name)
+                 fax_exists = 1
+@@ -249,6 +246,24 @@
+                                 "Fax printer %s exists but is disabled, reason: %s; "
+                                 "use 'cupsenable %s' to enable it" % (name, statemsg, name))
+ 
++        # Make the name unique.
++        if self.name in printers.keys ():
++            suffix = 2
++            while (self.name + str (suffix)) in printers.keys ():
++                suffix += 1
++                if suffix == 100:
++                    break
++            self.name += str (suffix)
++
++        # Make the faxname unique
++        if self.faxname in printers.keys ():
++            suffix = 2
++            while (self.faxname + str (suffix)) in printers.keys ():
++                suffix += 1
++                if suffix == 100:
++                    break
++            self.faxname += str (suffix)
++
+         def wait_child (sig, stack):
+             (pid, status) = os.wait ()
+ 
+@@ -282,7 +297,7 @@
+                 # really new printer - try autodetection
+                 if p == None:
+                     cupsppds = self.cups_connection.getPPDs ()
+-                    p = ppds.PPDs (cupsppds)
++                    p = cupshelpers.ppds.PPDs (cupsppds)
+                 syslog (LOG_DEBUG, "Device ID: MFG:%s;MDL:%s;DES:%s;CMD:%s; URI:%s" %
+                         (self.make, self.model, self.description,
+                          reduce(lambda x, y: x + ',' + y, self.commandsets),
+@@ -297,7 +312,8 @@
+ 
+                 self.cups_connection.addPrinter(self.name,
+                                                 device=self.get_cups_uri(),
+-                                                ppdname=ppdname, info=info)
++                                                ppdname=ppdname, info=info,
++                                                location=os.uname ()[1])
+                 self.cups_connection.enablePrinter(self.name)
+                 self.cups_connection.acceptJobs(self.name)
+                 syslog (LOG_INFO, "Added printer %s" % self.name)
+@@ -306,12 +322,13 @@
+                 faxname = self.faxname
+                 if p == None:
+                     cupsppds = self.cups_connection.getPPDs ()
+-                    p = ppds.PPDs (cupsppds)
++                    p = cupshelpers.ppds.PPDs (cupsppds)
+                 (status, faxppd) = p.getPPDNameFromDeviceID ("HP", "Fax",
+                                                         "HP Fax", [], faxuri)
+                 info = "Fax queue for %s %s" % (self.make, self.model)
+                 self.cups_connection.addPrinter(faxname, device=faxuri,
+-                                                ppdname=faxppd, info=info)
++                                                ppdname=faxppd, info=info,
++                                                location=os.uname()[1])
+                 self.cups_connection.enablePrinter(faxname)
+                 self.cups_connection.acceptJobs(faxname)
+                 syslog (LOG_INFO, "Added fax printer %s" % faxname)
+@@ -403,7 +420,7 @@
+         if model[-1]=="\n": model = model[:-1]
+ 
+         cupsppds = self.cups_connection.getPPDs ()
+-        p = ppds.PPDs (cupsppds)
++        p = cupshelpers.ppds.PPDs (cupsppds)
+         (status, ppdname) = p.getPPDNameFromDeviceID (make, model, "", "")
+ 
+         if not ppdname:
+@@ -415,7 +432,8 @@
+         # add printer
+         self.cups_connection.addPrinter(
+             self.name, device=self.get_cups_uri(),
+-            ppdname=ppdname, info="Added by HAL")
++            ppdname=ppdname, info="Added by HAL",
++            location=os.uname()[1])
+         self.cups_connection.enablePrinter(self.name)
+         self.cups_connection.acceptJobs(self.name)
+         syslog (LOG_INFO,

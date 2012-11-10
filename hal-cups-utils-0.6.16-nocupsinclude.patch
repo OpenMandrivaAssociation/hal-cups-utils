@@ -1,0 +1,9 @@
+diff -p -up hal-cups-utils-0.6.16/backend/Makefile.am~ hal-cups-utils-0.6.16/backend/Makefile.am
+--- hal-cups-utils-0.6.16/backend/Makefile.am~	2007-07-05 15:56:16.000000000 -0400
++++ hal-cups-utils-0.6.16/backend/Makefile.am	2008-06-06 10:26:30.000000000 -0400
+@@ -5,4 +5,4 @@ hal_SOURCES = hal.c 
+ 
+ hal_LDADD = $(HAL_LIBS) $(CUPS_LIBS)
+ 
+-INCLUDES = $(HAL_CFLAGS) $(CUPS_CFLAGS)
++INCLUDES = $(HAL_CFLAGS)

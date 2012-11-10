@@ -1,0 +1,220 @@
+diff -p -up hal-cups-utils-0.6.16/systemv/hal_lpadmin.orig hal-cups-utils-0.6.16/systemv/hal_lpadmin
+--- hal-cups-utils-0.6.16/systemv/hal_lpadmin.orig	2008-09-24 14:53:49.000000000 -0400
++++ hal-cups-utils-0.6.16/systemv/hal_lpadmin	2008-09-24 14:55:50.000000000 -0400
+@@ -3,6 +3,7 @@ import dbus, sys, os, time, signal, re
+ import traceback
+ import cups, cupshelpers
+ from syslog import *
++import mdv_printer_custom
+ 
+ def get_hplip_uris_for_usb (fax=False, checkuri=None):
+     hpuris = []
+@@ -18,18 +19,17 @@ def get_hplip_uris_for_usb (fax=False, c
+         if (line.find ("ID 03f0:") < 0): continue
+         bus = line[4:7]
+         device = line[15:18]
+-        if fax:
+-            type="-f"
+-        else:
+-            type="-c"
+-        cmd = \
+-            "LC_ALL=C hp-makeuri -lnone %s %s:%s 2>/dev/null </dev/null" % \
+-            (type, bus, device)
++        cmd = "LC_ALL=C hp-makeuri-mdv %s %s" % (bus, device)
+         try:
+             uri = os.popen (cmd, 'r').readlines ()[0].strip ()
+         except:
+             continue
+         if (not uri): continue
++        if fax:
++            if mdv_printer_custom.is_fax_capable(
++                    mdv_printer_custom.uri2make(uri),
++                    mdv_printer_custom.uri2model(uri)):
++                uri = uri.replace("hp:", "hpfax:")
+         if checkuri and checkuri == uri:
+              return True
+         hpuris.append (uri)
+@@ -108,7 +108,8 @@ class HalPrinter:
+                 if serial:
+                     uri += "?serial=%s" % serial
+                 uris.insert (0, uri)
+-                
++
++            syslog (LOG_DEBUG, "Vendor: %s" % vendor)
+             if (not removed and
+                 (vendor == "hewlett-packard" or vendor == "hp")):
+                 # Perhaps HPLIP can drive this device.  If so, we
+@@ -224,7 +225,35 @@ class HalPrinter:
+                     if statemsg.lower ().startswith ("unplugged"):
+                         syslog (LOG_INFO,
+                                 "Re-enabling printer %s" % name)
++                        bus = dbus.SystemBus()
++                        if mdv_printer_custom.is_firmware_needed(self.make, self.model):
++                            if mdv_printer_custom.is_firmware_present(self.make,self.model):
++                                mdv_printer_custom.install_firmware(self.make, self.model)
++                            else:
++                                try:
++                                    syslog (LOG_INFO, "Firmware PrinterFirmwareDownload")
++                                    if bus.call_blocking('com.redhat.NewPrinterNotification',
++                                          '/com/redhat/NewPrinterNotification',
++                                          'com.redhat.NewPrinterNotification', 'PrinterFirmwareDownload',
++                                          'ss', (self.make,name,), timeout=360):
++                                        if not mdv_printer_custom.download_and_install_firmware(self.make, self.model):
++                                            bus.call_blocking('com.redhat.NewPrinterNotification',
++                                                '/com/redhat/NewPrinterNotification', 
++                                                'com.redhat.NewPrinterNotification', 'MissingDriver',
++                                                'ss', (self.make,self.model,))
++                                            return
++                                    else: 
++                                        return
++                                except dbus.DBusException, e:
++                                    pass
+                         self.cups_connection.enablePrinter(name)
++                        try:
++                            bus.call_blocking('com.redhat.NewPrinterNotification',
++                                  '/com/redhat/NewPrinterNotification',
++                                  'com.redhat.NewPrinterNotification', 'PrinterEnabled',
++                                  'ss', (self.make,name,))
++                        except dbus.DBusException, e:
++                            pass
+                     else:
+                         syslog (LOG_INFO,
+                                 "Printer %s exists but is disabled, reason: %s; "
+@@ -294,7 +323,57 @@ class HalPrinter:
+                 notification = None
+ 
+             if printer_exists == 0:
++                packages = mdv_printer_custom.guess_driver_packages(self.make, self.model)
++                syslog (LOG_DEBUG, "PACKAGES: %s" % packages)
++                # if no package is found, try the auto detection anyway
++                if packages:
++                    try:
++                        if not mdv_printer_custom.is_installed_packages(packages):
++                            packages_ok = bus.call_blocking('com.redhat.NewPrinterNotification',
++                                '/com/redhat/NewPrinterNotification',
++                                'com.redhat.NewPrinterNotification', 'InstallDriver',
++                                'ssas', (self.make,self.model,packages), timeout=360)
++                            if not packages_ok:
++                                bus.call_blocking('com.redhat.NewPrinterNotification',
++                                    '/com/redhat/NewPrinterNotification',
++                                    'com.redhat.NewPrinterNotification', 'MissingDriver',
++                                    'ss', (self.make,self.model,))
++                                return
++                    except dbus.DBusException, e:
++                        pass
++
++                bus = dbus.SystemBus()
++                if mdv_printer_custom.is_firmware_needed(self.make, self.model):
++                    if mdv_printer_custom.is_firmware_present(self.make,self.model):
++                        mdv_printer_custom.install_firmware(self.make, self.model)
++                    else:
++                        try:
++                            syslog (LOG_INFO, "Firmware PrinterFirmwareDownload")
++                            if bus.call_blocking('com.redhat.NewPrinterNotification',
++                                  '/com/redhat/NewPrinterNotification',
++                                  'com.redhat.NewPrinterNotification', 'PrinterFirmwareDownload',
++                                  'ss', (self.make,self.model,), timeout=360):
++                                if not mdv_printer_custom.download_and_install_firmware(self.make, self.model):
++                                    bus.call_blocking('com.redhat.NewPrinterNotification',
++                                        '/com/redhat/NewPrinterNotification',
++                                        'com.redhat.NewPrinterNotification', 'MissingDriver',
++                                        'ss', (self.make,self.model,))
++                                    return
++                            else:
++                                 return
++
++                        except dbus.DBusException, e:
++                            pass
++
+                 # really new printer - try autodetection
++                try:
++                    bus.call_blocking('com.redhat.NewPrinterNotification',
++                        '/com/redhat/NewPrinterNotification',
++                        'com.redhat.NewPrinterNotification', 'InstallingPrinter',
++                        'ss', (self.make,self.model,))
++                except dbus.DBusException, e:
++                    pass
++
+                 if p == None:
+                     cupsppds = self.cups_connection.getPPDs ()
+                     p = cupshelpers.ppds.PPDs (cupsppds)
+@@ -389,6 +468,7 @@ class HalPrinter:
+         if model.startswith (make):
+             model = model[len (make):]
+             model = model.lstrip ()
++        notified = False
+         for name, printer in printers.iteritems():
+             if printer.is_class: continue
+             if (((printer.device_uri.find (model.replace (" ", "%20")) != -1 or
+@@ -412,6 +492,18 @@ class HalPrinter:
+                                                         "Unplugged or turned off")
+                         syslog (LOG_INFO,
+                                 "Disabled printer %s, as the corresponding device was unplugged or turned off" % (name))
++                        syslog (LOG_INFO, "MY PID: %s" % str(os.getpid()))
++                        # notify once
++                        if notified == False:
++                            notified = True
++                            bus1 = dbus.SystemBus()
++                            try:
++                                bus1.call_blocking('com.redhat.NewPrinterNotification',
++                                      '/com/redhat/NewPrinterNotification',
++                                      'com.redhat.NewPrinterNotification', 'PrinterDisabled',
++                                      'ss', (make,name,))
++                            except dbus.DBusException, e:
++                                pass
+ 
+     def configure(self):
+         syslog (LOG_DEBUG, "configure")
+@@ -458,10 +550,52 @@ class HalLpAdmin:
+         print "Usage: hal_lpadmin (--add|--remove|--configure)"
+ 
+     def addPrinter(self):
++        bus = dbus.SystemBus()
++        try:
++            obj = bus.get_object("com.redhat.NewPrinterNotification",
++                                 "/com/redhat/NewPrinterNotification")
++            notification = dbus.Interface(obj, "com.redhat.NewPrinterNotification")
++        except:
++            pass
++
++        """Ensure we have cups installed and running"""
++        if not mdv_printer_custom.is_installed_packages(['task-printing-server']):
++            try:
++                syslog (LOG_DEBUG, "Calling InstallSpooler")
++                ret = bus.call_blocking('com.redhat.NewPrinterNotification',
++                      '/com/redhat/NewPrinterNotification',
++                      'com.redhat.NewPrinterNotification', 'InstallSpooler',
++                      '', (), timeout=360)
++                if not ret:
++                    syslog (LOG_DEBUG, "InstallSpooler Failed")
++                    bus.call_blocking('com.redhat.NewPrinterNotification',
++                          '/com/redhat/NewPrinterNotification',
++                          'com.redhat.NewPrinterNotification', 'InstallSpoolerFailed',
++                          '', (), timeout=360)
++                    return
++            except dbus.DBusException, e:
++                syslog (LOG_DEBUG, "D-Bus method call failed: %s" % e)
++		return
++        """We reach here when we have cups installed"""
++        if os.system("service cups status") != 0:
++            if os.system("service cups restart") != 0:
++                bus = dbus.SystemBus()
++                try:
++                    syslog (LOG_DEBUG, "Calling SpoolerStartFailed")
++                    ret = bus.call_blocking('com.redhat.NewPrinterNotification',
++                          '/com/redhat/NewPrinterNotification',
++                          'com.redhat.NewPrinterNotification', 'SpoolerStartFailed',
++                          '', (), timeout=360)
++                except dbus.DBusException, e:
++                    syslog (LOG_DEBUG, "D-Bus method call failed: %s" % e)
++                return
++
+         printer = HalPrinter()
+         printer.add()
+         
+     def removePrinter(self):
++        if not mdv_printer_custom.is_installed_packages(['task-printing-server']):
++            return
+         printer = HalPrinter()
+         printer.remove()
+ 

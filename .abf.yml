@@ -1,0 +1,5 @@
+sources:
+  "hal-cups-utils-0.6.16.tar.bz2:"	a50b286b7ca0fd15c1db121c5d04e56df470eaa1
+  "hp-makeuri-mdv.c:"	8cad7ff70d8bcc8aba92c9aa6b49d0d2147cb3c8
+  "mdv_backend:"	6b4cd139a33385586cef832a5ea8783aca0dff14
+  "mdv_printer_custom.py:"	5353d7f0ab8f59c5a18c2ebc0a6add3e8e9b79d2

@@ -1,0 +1,12 @@
+diff -p -up hal-cups-utils-0.6.16/configure.in~ hal-cups-utils-0.6.16/configure.in
+--- hal-cups-utils-0.6.16/configure.in~	2008-03-25 07:59:57.000000000 -0400
++++ hal-cups-utils-0.6.16/configure.in	2008-06-06 16:18:40.000000000 -0400
+@@ -29,7 +29,7 @@ PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.4
+ AC_SUBST(GLIB_CFLAGS)
+ AC_SUBST(GLIB_LIBS)
+ 
+-CUPS_BACKEND_DIR="${prefix}/lib/cups/backend"
++CUPS_BACKEND_DIR="${libdir}/cups/backend"
+ CUPS_CFLAGS="-I${includedir}/cups"
+ CUPS_LIBS="-lcups"
+ 
