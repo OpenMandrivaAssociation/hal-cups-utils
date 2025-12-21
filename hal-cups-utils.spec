@@ -10,6 +10,11 @@ Source1:	mdv_printer_custom.py
 Source2:    hp-makeuri-mdv.c
 Source3:    mdv_backend
 BuildRoot:	%{_tmppath}/%{name}-%{version}-buildroot
+BuildRequires:	autoconf
+BuildRequires:	automake
+BuildRequires:	libtool-base
+BuildRequires:	slibtool
+BuildRequires:	make
 BuildRequires:	dbus-glib-devel
 BuildRequires:  libcups-devel
 BuildRequires:  libhal-devel
